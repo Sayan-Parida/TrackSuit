@@ -2,13 +2,13 @@
 
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
-import { Package, Truck, CheckCircle, Clock } from 'lucide-react';
+import { Package, Truck, CheckCircle, Clock, AlertCircle, XCircle } from 'lucide-react';
 
 export interface DeliveryCardProps {
   id: string;
   productName: string;
   platform: 'amazon' | 'flipkart' | 'myntra';
-  status: 'delivered' | 'shipped' | 'out-for-delivery' | 'order-placed';
+  status: 'delivered' | 'shipped' | 'out-for-delivery' | 'order-placed' | 'delayed' | 'cancelled';
   expectedDate: string;
 }
 
@@ -49,6 +49,14 @@ const statusConfig: Record<DeliveryCardProps['status'], {
   'order-placed': {
     label: 'Order Placed',
     icon: <Clock className="w-3 h-3" />,
+  },
+  delayed: {
+    label: 'Delayed',
+    icon: <AlertCircle className="w-3 h-3" />,
+  },
+  cancelled: {
+    label: 'Cancelled',
+    icon: <XCircle className="w-3 h-3" />,
   },
 };
 
@@ -104,6 +112,10 @@ export function DeliveryCard({
               ${
                 status === 'delivered'
                   ? 'w-full bg-muted-foreground'
+                  : status === 'cancelled'
+                    ? 'w-full bg-muted-foreground/60'
+                    : status === 'delayed'
+                      ? 'w-1/3 bg-muted-foreground/80'
                   : status === 'out-for-delivery'
                     ? 'w-2/3 bg-muted-foreground'
                     : status === 'shipped'

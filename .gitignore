@@ -1,4 +1,13 @@
-# v0 sandbox internal files
+# ========================
+# Environment
+# ========================
+.env
+.env.local
+.env.*.local
+
+# ========================
+# v0 / Vercel
+# ========================
 __v0_runtime_loader.js
 __v0_devtools.tsx
 __v0_jsx-dev-runtime.ts
@@ -8,10 +17,32 @@ __v0_jsx-dev-runtime.ts
 .vercel/
 next.user-config.*
 
-# Environment variables
-.env*.local
-
-# Common ignores
+# ========================
+# Dependencies & Build
+# ========================
 node_modules/
 .next/
+build/
+
+# ========================
+# IDE & OS
+# ========================
 .DS_Store
+.vscode/
+.idea/
+*.iws
+*.iml
+*.ipr
+
+# ========================
+# Logs
+# ========================
+*.log
+
+# ========================
+# Backend (Gradle/Java)
+# ========================
+backend/backend/.gradle/
+backend/backend/build/
+backend/backend/bin/
+backend/backend/out/

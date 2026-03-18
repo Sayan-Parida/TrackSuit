@@ -1,65 +1,91 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Header } from '@/components/header';
 import { Sidebar } from '@/components/sidebar';
 import { MobileNav } from '@/components/mobile-nav';
 import { DeliveryCard, type DeliveryCardProps } from '@/components/delivery-card';
 import { Button } from '@/components/ui/button';
 import { Mail } from 'lucide-react';
+import { fetchOrders, type ApiOrder } from '@/lib/api/orders';
 
-// Mock delivery data
-const mockDeliveries: DeliveryCardProps[] = [
-  {
-    id: '1',
-    productName: 'Wireless Noise-Cancelling Headphones Pro Max',
-    platform: 'amazon',
-    status: 'delivered',
-    expectedDate: 'Mar 15, 2026',
-  },
-  {
-    id: '2',
-    productName: 'Premium Cotton T-Shirt Pack (3)',
-    platform: 'myntra',
-    status: 'shipped',
-    expectedDate: 'Mar 19, 2026',
-  },
-  {
-    id: '3',
-    productName: 'Summer Fashion Casual Sneakers',
-    platform: 'flipkart',
-    status: 'out-for-delivery',
-    expectedDate: 'Mar 18, 2026',
-  },
-  {
-    id: '4',
-    productName: 'Portable USB-C Fast Charger 65W',
-    platform: 'amazon',
-    status: 'order-placed',
-    expectedDate: 'Mar 22, 2026',
-  },
-  {
-    id: '5',
-    productName: 'Stainless Steel Water Bottle 1L',
-    platform: 'flipkart',
-    status: 'shipped',
-    expectedDate: 'Mar 20, 2026',
-  },
-  {
-    id: '6',
-    productName: 'Designer Sunglasses with UV Protection',
-    platform: 'myntra',
-    status: 'delivered',
-    expectedDate: 'Mar 16, 2026',
-  },
-];
+const SUPPORTED_PLATFORMS = ['amazon', 'flipkart', 'myntra'] as const;
+
+function isSupportedPlatform(platform: string): platform is DeliveryCardProps['platform'] {
+  return (SUPPORTED_PLATFORMS as readonly string[]).includes(platform);
+}
+
+function mapOrderStatus(status: string): DeliveryCardProps['status'] {
+  const normalized = status.trim().toUpperCase();
+
+  if (normalized === 'DELIVERED') {
+    return 'delivered';
+  }
+  if (normalized === 'OUT_FOR_DELIVERY') {
+    return 'out-for-delivery';
+  }
+  if (normalized === 'SHIPPED') {
+    return 'shipped';
+  }
+  if (normalized === 'DELAYED') {
+    return 'delayed';
+  }
+  if (normalized === 'CANCELLED') {
+    return 'cancelled';
+  }
+
+  return 'order-placed';
+}
+
+function mapApiOrderToDeliveryCard(order: ApiOrder): DeliveryCardProps {
+  const normalizedPlatform = order.platform.trim().toLowerCase();
+  const platform = isSupportedPlatform(normalizedPlatform) ? normalizedPlatform : 'amazon';
+
+  const expectedDate = new Date(order.deliveryDate).toLocaleDateString('en-US', {
+    month: 'short',
+    day: '2-digit',
+    year: 'numeric',
+  });
+
+  return {
+    id: String(order.id),
+    platform,
+    productName: order.productName,
+    status: mapOrderStatus(order.status),
+    expectedDate,
+  };
+}
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'orders' | 'settings'>('dashboard');
   const [searchQuery, setSearchQuery] = useState('');
+  const [deliveries, setDeliveries] = useState<DeliveryCardProps[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const filteredDeliveries = mockDeliveries.filter((delivery) =>
-    delivery.productName.toLowerCase().includes(searchQuery.toLowerCase())
+  const loadOrders = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const apiOrders = await fetchOrders();
+      setDeliveries(apiOrders.map(mapApiOrderToDeliveryCard));
+    } catch {
+      setError('Could not load orders from backend. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadOrders();
+  }, []);
+
+  const filteredDeliveries = useMemo(
+    () =>
+      deliveries.filter((delivery) =>
+        delivery.productName.toLowerCase().includes(searchQuery.toLowerCase())
+      ),
+    [deliveries, searchQuery]
   );
 
   const handleLogout = () => {
@@ -113,7 +139,23 @@ export default function Home() {
 
               {/* Delivery Cards Grid */}
               <div>
-                {filteredDeliveries.length > 0 ? (
+                {isLoading ? (
+                  <div className="flex flex-col items-center justify-center py-24 sm:py-32">
+                    <p className="text-sm sm:text-base text-muted-foreground">Loading orders...</p>
+                  </div>
+                ) : error ? (
+                  <div className="flex flex-col items-center justify-center py-24 sm:py-32">
+                    <div className="text-center px-4">
+                      <h3 className="text-sm sm:text-base font-medium text-foreground mb-2 sm:mb-3">
+                        Unable to load dashboard
+                      </h3>
+                      <p className="text-xs sm:text-sm text-muted-foreground mb-4">{error}</p>
+                      <Button onClick={loadOrders} className="rounded-sm">
+                        Retry
+                      </Button>
+                    </div>
+                  </div>
+                ) : filteredDeliveries.length > 0 ? (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 md:gap-6">
                     {filteredDeliveries.map((delivery) => (
                       <DeliveryCard
@@ -134,7 +176,7 @@ export default function Home() {
                       <p className="text-xs sm:text-sm text-muted-foreground">
                         {searchQuery
                           ? 'Try adjusting your search'
-                          : 'Connect your Gmail to start tracking'}
+                          : 'Orders will appear here once backend data is available'}
                       </p>
                     </div>
                   </div>
